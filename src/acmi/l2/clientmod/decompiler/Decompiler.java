@@ -74,7 +74,8 @@ public class Decompiler {
             if (field instanceof Const) {
                 sb.append(newLine()).append(decompileConst((Const) field, objectFactory, indent)).append(";");
             } else if (field instanceof Enum) {
-                sb.append(newLine()).append(decompileEnum((Enum) field, objectFactory, indent)).append(";");
+                if (!struct.getClass().equals(Struct.class))
+                    sb.append(newLine()).append(decompileEnum((Enum) field, objectFactory, indent)).append(";");
             } else if (field instanceof Property) {
                 if (field instanceof DelegateProperty)
                     continue;
@@ -122,7 +123,19 @@ public class Decompiler {
 
         sb.append(tab(indent));
         sb.append("var ");
-        sb.append(getType(property, objectFactory)).append(" ");
+        String type = getType(property, objectFactory);
+        if (parent.getClass().equals(Struct.class)) {
+            if (property instanceof ByteProperty &&
+                    ((ByteProperty) property).enumType != 0) {
+                UnrealPackageReadOnly.Entry enumLocalEntry = ((ByteProperty) property).getEnumType();
+                UnrealPackageReadOnly.ExportEntry enumEntry = objectFactory.getClassLoader()
+                        .getExportEntry(enumLocalEntry.getObjectFullName(), e -> e.getObjectClass() != null && e.getObjectClass().getObjectFullName().equalsIgnoreCase("Core.Enum"));
+                Enum en = (Enum) objectFactory.apply(enumEntry);
+                type = decompileEnum(en, objectFactory, indent).toString().trim();
+            }
+            //FIXME array<enum>
+        }
+        sb.append(type).append(" ");
         sb.append(property.getEntry().getObjectName().getName());
         if (property.arrayDimension > 1)
             sb.append("[").append(property.arrayDimension).append("]");
