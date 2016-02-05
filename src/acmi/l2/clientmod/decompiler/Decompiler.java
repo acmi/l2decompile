@@ -27,6 +27,7 @@ import acmi.l2.clientmod.unreal.core.Class;
 import acmi.l2.clientmod.unreal.core.Enum;
 import acmi.l2.clientmod.unreal.objectfactory.ObjectFactory;
 
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 import static acmi.l2.clientmod.decompiler.Util.*;
@@ -121,8 +122,57 @@ public class Decompiler {
     public static CharSequence decompileProperty(Property property, Struct parent, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
 
+        Collection<Property.CPF> propertyFlags = property.getPropertyFlags();
+        Collection<UnrealPackageReadOnly.ObjectFlag> objectFlags = UnrealPackageReadOnly.ObjectFlag.getFlags(property.getEntry().getObjectFlags());
+
         sb.append(tab(indent));
-        sb.append("var ");
+        sb.append("var");
+        if (propertyFlags.contains(Property.CPF.Edit)) {
+            sb.append("(").append(property.getCategory()).append(")");
+        }
+        sb.append(" ");
+        if (propertyFlags.contains(Property.CPF.Travel)) {
+            sb.append("travel ");
+        }
+        if (propertyFlags.contains(Property.CPF.Localized)) {
+            sb.append("localized ");
+        }
+        if (propertyFlags.contains(Property.CPF.Transient)) {
+            sb.append("transient ");
+        }
+        if (propertyFlags.contains(Property.CPF.Input)) {
+            sb.append("input ");
+        }
+        if (propertyFlags.contains(Property.CPF.ExportObject)) {
+            sb.append("export ");
+        }
+        if (propertyFlags.contains(Property.CPF.UNK4)) {
+            sb.append("editinline ");
+        }
+        if (propertyFlags.contains(Property.CPF.UNK5)) {
+            sb.append("edfindable ");
+        }
+        if (propertyFlags.contains(Property.CPF.GlobalConfig)) {
+            sb.append("globalconfig ");
+        }
+        if (propertyFlags.contains(Property.CPF.Config) && !propertyFlags.contains(Property.CPF.GlobalConfig)) {
+            sb.append("config ");
+        }
+        if (propertyFlags.contains(Property.CPF.Native)) {
+            sb.append("native ");
+        }
+        if (propertyFlags.contains(Property.CPF.Deprecated)) {
+            sb.append("deprecated ");
+        }
+        if (objectFlags.contains(UnrealPackageReadOnly.ObjectFlag.Private)) {
+            sb.append("private ");
+        }
+        if (propertyFlags.contains(Property.CPF.Const)) {
+            sb.append("const ");
+        }
+        if (propertyFlags.contains(Property.CPF.EditConst)) {
+            sb.append("editconst ");
+        }
         String type = getType(property, objectFactory);
         if (parent.getClass().equals(Struct.class)) {
             if (property instanceof ByteProperty &&
