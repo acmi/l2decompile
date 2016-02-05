@@ -83,7 +83,7 @@ public class Decompiler {
 
                 sb.append(newLine()).append(decompileProperty((Property) field, struct, objectFactory, indent)).append(";");
             } else if (field instanceof State) {
-                sb.append(newLine()).append(decompileState((State) field, objectFactory, indent)).append(";");
+                sb.append(newLine()).append(decompileState((State) field, objectFactory, indent));
             } else if (field instanceof Function) {
                 sb.append(newLine()).append(decompileFunction((Function) field, objectFactory, indent));
             } else if (field instanceof Struct) {
