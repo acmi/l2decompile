@@ -42,7 +42,7 @@ public class NextIterator implements Iterator<Field> {
 
     @Override
     public Field next() {
-        field = Decompiler.instantiate(field.getNext(), objectFactory);
+        field = (Field) Decompiler.instantiate(field.getNext(), objectFactory);
         return field;
     }
 }

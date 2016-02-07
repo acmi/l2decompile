@@ -40,21 +40,21 @@ public class ChildIterator implements Iterator<Field> {
 
     @Override
     public boolean hasNext() {
-        if (nextIterator == null){
+        if (nextIterator == null) {
             return struct.getChild() != null;
-        }else{
+        } else {
             return nextIterator.hasNext();
         }
     }
 
     @Override
     public Field next() {
-        if (nextIterator == null){
+        if (nextIterator == null) {
             UnrealPackageReadOnly.ExportEntry child = (UnrealPackageReadOnly.ExportEntry) struct.getChild();
-            Field field = Decompiler.instantiate(child, objectFactory);
+            Field field = (Field) Decompiler.instantiate(child, objectFactory);
             nextIterator = new NextIterator(field, objectFactory);
             return field;
-        }else {
+        } else {
             return nextIterator.next();
         }
     }

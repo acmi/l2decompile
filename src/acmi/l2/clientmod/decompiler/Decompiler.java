@@ -25,6 +25,7 @@ import acmi.l2.clientmod.io.UnrealPackageReadOnly;
 import acmi.l2.clientmod.unreal.core.*;
 import acmi.l2.clientmod.unreal.core.Class;
 import acmi.l2.clientmod.unreal.core.Enum;
+import acmi.l2.clientmod.unreal.core.Object;
 import acmi.l2.clientmod.unreal.objectfactory.ObjectFactory;
 
 import java.util.Collection;
@@ -33,15 +34,15 @@ import java.util.stream.Collectors;
 import static acmi.l2.clientmod.decompiler.Util.*;
 
 public class Decompiler {
-    static Field instantiate(UnrealPackageReadOnly.ExportEntry child, ObjectFactory objectFactory) {
-        String objClass = child.getObjectClass() == null ? "Core.Class" : child.getObjectClass().getObjectFullName();
+    static Object instantiate(UnrealPackageReadOnly.ExportEntry entry, ObjectFactory objectFactory) {
+        String objClass = entry.getObjectClass() == null ? "Core.Class" : entry.getObjectClass().getObjectFullName();
         if (objClass.equals("Core.Class") ||
                 objClass.equals("Core.State") ||
                 objClass.equals("Core.Function") ||
                 objClass.equals("Core.Struct")) {
-            return objectFactory.getClassLoader().getStruct(child.getObjectFullName());
+            return objectFactory.getClassLoader().getStruct(entry.getObjectFullName());
         } else {
-            return (Field) objectFactory.apply(child);
+            return objectFactory.apply(entry);
         }
     }
 
