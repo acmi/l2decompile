@@ -30,6 +30,7 @@ import acmi.l2.clientmod.unreal.objectfactory.ObjectFactory;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static acmi.l2.clientmod.decompiler.Util.*;
 
@@ -53,15 +54,15 @@ public class Decompiler {
         String superName = clazz.getEntry().getObjectSuperClass() != null ?
                 clazz.getEntry().getObjectSuperClass().getObjectName().getName() : null;
 
-        sb.append(tab(indent)).append("class ").append(name);
+        sb.append("class ").append(name);
         if (superName != null)
             sb.append(" extends ").append(superName);
         //TODO flags
         sb.append(";");
 
         if (clazz.getChild() != null) {
-            sb.append(newLine(indent));
-            sb.append(decompileFields(clazz, objectFactory, indent));
+            sb.append(newLine());
+            sb.append(newLine(indent)).append(decompileFields(clazz, objectFactory, indent));
         }
 
         //TODO defaultproperties
@@ -70,38 +71,37 @@ public class Decompiler {
     }
 
     public static CharSequence decompileFields(Struct struct, ObjectFactory objectFactory, int indent) {
-        StringBuilder sb = new StringBuilder();
+        Stream.Builder<CharSequence> fields = Stream.builder();
 
         for (Field field : (Iterable<Field>) () -> new ChildIterator(struct, objectFactory)) {
             if (field instanceof Const) {
-                sb.append(newLine()).append(decompileConst((Const) field, objectFactory, indent)).append(";");
+                fields.add(decompileConst((Const) field, objectFactory, indent) + ";");
             } else if (field instanceof Enum) {
                 if (!struct.getClass().equals(Struct.class))
-                    sb.append(newLine()).append(decompileEnum((Enum) field, objectFactory, indent)).append(";");
+                    fields.add(decompileEnum((Enum) field, objectFactory, indent) + ";");
             } else if (field instanceof Property) {
                 if (field instanceof DelegateProperty)
                     continue;
 
-                sb.append(newLine()).append(decompileProperty((Property) field, struct, objectFactory, indent)).append(";");
+                fields.add(decompileProperty((Property) field, struct, objectFactory, indent) + ";");
             } else if (field instanceof State) {
-                sb.append(newLine()).append(decompileState((State) field, objectFactory, indent));
+                fields.add(decompileState((State) field, objectFactory, indent));
             } else if (field instanceof Function) {
-                sb.append(newLine()).append(decompileFunction((Function) field, objectFactory, indent));
+                fields.add(decompileFunction((Function) field, objectFactory, indent));
             } else if (field instanceof Struct) {
-                sb.append(newLine()).append(decompileStruct((Struct) field, objectFactory, indent)).append(";");
+                fields.add(decompileStruct((Struct) field, objectFactory, indent) + ";");
             } else {
-                sb.append(newLine()).append(field);
+                fields.add(field.toString());
             }
         }
 
-        return sb;
+        return fields.build().collect(Collectors.joining(newLine(indent)));
     }
 
     public static CharSequence decompileConst(Const c, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(tab(indent))
-                .append("const ")
+        sb.append("const ")
                 .append(c.getEntry().getObjectName().getName())
                 .append(" =")
                 .append(c.constant);
@@ -126,7 +126,6 @@ public class Decompiler {
         Collection<Property.CPF> propertyFlags = property.getPropertyFlags();
         Collection<UnrealPackageReadOnly.ObjectFlag> objectFlags = UnrealPackageReadOnly.ObjectFlag.getFlags(property.getEntry().getObjectFlags());
 
-        sb.append(tab(indent));
         sb.append("var");
         if (propertyFlags.contains(Property.CPF.Edit)) {
             sb.append("(").append(property.getCategory()).append(")");
@@ -174,7 +173,7 @@ public class Decompiler {
         if (propertyFlags.contains(Property.CPF.EditConst)) {
             sb.append("editconst ");
         }
-        String type = getType(property, objectFactory);
+        CharSequence type = getType(property, objectFactory);
         if (parent.getClass().equals(Struct.class)) {
             if (property instanceof ByteProperty &&
                     ((ByteProperty) property).enumType != 0) {
@@ -182,7 +181,7 @@ public class Decompiler {
                 UnrealPackageReadOnly.ExportEntry enumEntry = objectFactory.getClassLoader()
                         .getExportEntry(enumLocalEntry.getObjectFullName(), e -> e.getObjectClass() != null && e.getObjectClass().getObjectFullName().equalsIgnoreCase("Core.Enum"));
                 Enum en = (Enum) objectFactory.apply(enumEntry);
-                type = decompileEnum(en, objectFactory, indent).toString().trim();
+                type = decompileEnum(en, objectFactory, indent);
             }
             //FIXME array<enum>
         }
@@ -227,18 +226,17 @@ public class Decompiler {
 
     public static CharSequence decompileStruct(Struct struct, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
-        sb.append(tab(indent)).append("struct ").append(struct.getEntry().getObjectName().getName());
+        sb.append("struct ").append(struct.getEntry().getObjectName().getName());
         sb.append(newLine(indent)).append("{");
-        sb.append(decompileFields(struct, objectFactory, indent + 1));
+        sb.append(newLine(indent + 1)).append(decompileFields(struct, objectFactory, indent + 1));
         sb.append(newLine(indent)).append("}");
         return sb;
     }
 
     public static CharSequence decompileFunction(Function function, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
-        sb.append(tab(indent));
-        sb.append("//function_");
-        sb.append(function.getFriendlyName());
+
+        sb.append("//function_").append(function.getFriendlyName()); //TODO
 
         return sb;
     }
@@ -246,13 +244,13 @@ public class Decompiler {
     public static CharSequence decompileState(State state, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(tab(indent)).append("state ");
+        sb.append("state ");
         sb.append(state.getEntry().getObjectName().getName());
         if (state.getEntry().getObjectSuperClass() != null) {
             sb.append(" extends ").append(state.getEntry().getObjectSuperClass().getObjectName().getName());
         }
         sb.append(newLine(indent)).append("{");
-        sb.append(decompileFields(state, objectFactory, indent + 1));
+        sb.append(newLine(indent + 1)).append(decompileFields(state, objectFactory, indent + 1));
         sb.append(newLine(indent)).append("}");
 
         return sb;
