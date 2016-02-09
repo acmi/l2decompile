@@ -486,7 +486,7 @@ public class Decompiler {
         return entry != null &&
                 entry instanceof UnrealPackageReadOnly.ExportEntry &&
                 (template.getPropertyFlags().contains(Property.CPF.ExportObject) ||
-                        template.getPropertyFlags().contains(Property.CPF.UNK8)); //FIXME
+                        template.getPropertyFlags().contains(Property.CPF.EditInlineNotify)); //FIXME
 
     }
 
