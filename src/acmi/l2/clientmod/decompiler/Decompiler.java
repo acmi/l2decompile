@@ -146,10 +146,10 @@ public class Decompiler {
         if (propertyFlags.contains(Property.CPF.ExportObject)) {
             sb.append("export ");
         }
-        if (propertyFlags.contains(Property.CPF.UNK4)) {
+        if (propertyFlags.contains(Property.CPF.EditInline)) {
             sb.append("editinline ");
         }
-        if (propertyFlags.contains(Property.CPF.UNK5)) {
+        if (propertyFlags.contains(Property.CPF.EdFindable)) {
             sb.append("edfindable ");
         }
         if (propertyFlags.contains(Property.CPF.GlobalConfig)) {
