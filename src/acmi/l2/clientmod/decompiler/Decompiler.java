@@ -112,7 +112,7 @@ public class Decompiler {
     public static CharSequence decompileEnum(Enum e, ObjectFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(tab(indent)).append("enum ").append(e.getEntry().getObjectName().getName())
+        sb.append("enum ").append(e.getEntry().getObjectName().getName())
                 .append(newLine(indent)).append("{")
                 .append(newLine(indent + 1)).append(e.getValues().stream().collect(Collectors.joining("," + newLine(indent + 1))))
                 .append(newLine(indent)).append("}");
