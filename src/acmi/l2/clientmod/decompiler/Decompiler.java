@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 
 import static acmi.l2.clientmod.decompiler.Util.newLine;
 
+@SuppressWarnings({"WeakerAccess", "unchecked", "UnusedParameters", "unused"})
 public class Decompiler {
     static Object instantiate(UnrealPackage.ExportEntry entry, UnrealSerializerFactory objectFactory) {
         return objectFactory.getOrCreateObject(entry);
@@ -252,10 +253,25 @@ public class Decompiler {
             for (int i = 0; i < template.arrayDimension; i++) {
                 java.lang.Object obj = property.getAt(i);
 
+                if (template instanceof ByteProperty ||
+                        template instanceof ObjectProperty ||
+                        template instanceof NameProperty ||
+                        template instanceof ArrayProperty) {
+                    assert obj != null; //TODO replace assertion
+                }
+
+                if (obj == null) {
+                    if (template instanceof StructProperty)
+                        continue;
+                }
+
+                if (i > 0)
+                    sb.append(newLine(indent));
+
                 if (template instanceof ByteProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
                     if (((ByteProperty) template).enumType != null) {
@@ -268,14 +284,14 @@ public class Decompiler {
                         template instanceof BoolProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
                     sb.append(obj);
                 } else if (template instanceof FloatProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
                     sb.append(String.format(Locale.US, "%f", (Float) obj));
@@ -286,7 +302,7 @@ public class Decompiler {
                     }
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
                     if (entry == null) {
@@ -310,10 +326,10 @@ public class Decompiler {
                 } else if (template instanceof NameProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    sb.append("'").append(Objects.toString(obj)).append("'");
+                    sb.append("'").append(up.nameReference((Integer) obj)).append("'");
                 } else if (template instanceof ArrayProperty) {
                     ArrayProperty arrayProperty = (ArrayProperty) property.getTemplate();
                     Property innerProperty = arrayProperty.inner;
@@ -332,7 +348,7 @@ public class Decompiler {
 
                         fakeProperty.putAt(0, innerObj);
                         if (j > 0)
-                            sb.append(newLine(indent)); //TODO
+                            sb.append(newLine(indent));
                         sb.append(property.getName()).append("(").append(j).append(")")
                                 .append("=")
                                 .append(inlineProperty(fakeProperty, up, objectFactory, true));
@@ -340,18 +356,14 @@ public class Decompiler {
                 } else if (template instanceof StructProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    if (obj == null) {
-                        sb.append("None");
-                    } else {
-                        sb.append(inlineStruct((List<L2Property>) obj, up, objectFactory));
-                    }
+                    sb.append(inlineStruct((List<L2Property>) obj, up, objectFactory));
                 } else if (template instanceof StrProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
-                        sb.append("[").append(i).append("]");
+                        sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
                     sb.append("\"").append(Objects.toString(obj)).append("\"");
@@ -374,7 +386,7 @@ public class Decompiler {
                 sb.append(property.getName());
 
                 if (template.arrayDimension > 1) {
-                    sb.append("[").append(i).append("]");
+                    sb.append("(").append(i).append(")");
                 }
 
                 sb.append("=");
