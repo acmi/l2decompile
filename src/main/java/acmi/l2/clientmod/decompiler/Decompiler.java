@@ -22,23 +22,29 @@
 package acmi.l2.clientmod.decompiler;
 
 import acmi.l2.clientmod.io.UnrealPackage;
+import acmi.l2.clientmod.unreal.UnrealRuntimeContext;
 import acmi.l2.clientmod.unreal.UnrealSerializerFactory;
 import acmi.l2.clientmod.unreal.core.*;
 import acmi.l2.clientmod.unreal.core.Class;
 import acmi.l2.clientmod.unreal.core.Enum;
 import acmi.l2.clientmod.unreal.core.Object;
+import acmi.l2.clientmod.unreal.engine.Polys;
 import acmi.l2.clientmod.unreal.properties.L2Property;
 import javafx.util.Pair;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static acmi.l2.clientmod.decompiler.Util.newLine;
+import static acmi.l2.clientmod.decompiler.Util.*;
+import static acmi.l2.clientmod.io.BufferUtil.getCompactInt;
+import static acmi.l2.clientmod.unreal.core.Property.CPF.*;
 
 @SuppressWarnings({"WeakerAccess", "unchecked", "UnusedParameters", "unused"})
 public class Decompiler {
@@ -67,7 +73,7 @@ public class Decompiler {
         if (!clazz.properties.isEmpty()) {
             sb.append(newLine());
             sb.append(newLine(indent)).append("defaultproperties{");
-            sb.append(newLine(indent + 1)).append(decompileProperties(clazz, objectFactory, indent + 1));
+            sb.append(newLine(indent + 1)).append(decompileProperties(clazz, objectFactory, indent + 1, false));
             sb.append(newLine(indent)).append("}");
         }
 
@@ -146,27 +152,27 @@ public class Decompiler {
     }
 
     private static final List<Pair<Predicate<Property>, java.util.function.Function<Property, String>>> MODIFIERS = Arrays.asList(
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Edit), p -> "(" + (p.entry.getObjectPackage().getObjectName().getName().equalsIgnoreCase(p.category) ? "" : p.category) + ")"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Edit), p -> "(" + (p.entry.getObjectPackage().getObjectName().getName().equalsIgnoreCase(p.category) ? "" : p.category) + ")"),
             new Pair<>(p -> UnrealPackage.ObjectFlag.getFlags(p.entry.getObjectFlags()).contains(UnrealPackage.ObjectFlag.Private), p -> "private"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Const), p -> "const"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Input), p -> "input"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.ExportObject), p -> "export"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.OptionalParm), p -> "optional"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.OutParm), p -> "out"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.SkipParm), p -> "skip"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.CoerceParm), p -> "coerce"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Native), p -> "native"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Transient), p -> "transient"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Config), p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.GlobalConfig) ? null : "config"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Localized), p -> "localized"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Travel), p -> "travel"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EditConst), p -> "editconst"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.GlobalConfig), p -> "globalconfig"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EditInline), p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EditInlineUse) ? null : "editinline"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EdFindable), p -> "edfindable"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EditInlineUse), p -> "editinlineuse"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.Deprecated), p -> "deprecated"),
-            new Pair<>(p -> Property.CPF.getFlags(p.propertyFlags).contains(Property.CPF.EditInlineNotify), p -> "editinlinenotify")
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Const), p -> "const"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Input), p -> "input"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(ExportObject), p -> "export"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(OptionalParm), p -> "optional"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(OutParm), p -> "out"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(SkipParm), p -> "skip"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(CoerceParm), p -> "coerce"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Native), p -> "native"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Transient), p -> "transient"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Config), p -> getFlags(p.propertyFlags).contains(GlobalConfig) ? null : "config"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Localized), p -> "localized"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Travel), p -> "travel"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(EditConst), p -> "editconst"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(GlobalConfig), p -> "globalconfig"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(EditInline), p -> getFlags(p.propertyFlags).contains(EditInlineUse) ? null : "editinline"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(EdFindable), p -> "edfindable"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(EditInlineUse), p -> "editinlineuse"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(Deprecated), p -> "deprecated"),
+            new Pair<>(p -> getFlags(p.propertyFlags).contains(EditInlineNotify), p -> "editinlinenotify")
     );
 
     public static CharSequence getType(Property property, UnrealSerializerFactory objectFactory, boolean includeModifiers) {
@@ -220,7 +226,13 @@ public class Decompiler {
     public static CharSequence decompileFunction(Function function, UnrealSerializerFactory objectFactory, int indent) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("//function_").append(function.friendlyName); //TODO
+        UnrealRuntimeContext context = new UnrealRuntimeContext(function.entry, objectFactory);
+
+        //TODO
+        sb.append("//function_").append(function.friendlyName).append("{");
+        Arrays.stream(function.bytecode)
+                .forEach(t -> sb.append(newLine(indent)).append("//\t").append(t.toString(context)));
+        sb.append(newLine(indent)).append("//}");
 
         return sb;
     }
@@ -240,7 +252,7 @@ public class Decompiler {
         return sb;
     }
 
-    public static CharSequence decompileProperties(Object object, UnrealSerializerFactory objectFactory, int indent) {
+    public static CharSequence decompileProperties(Object object, UnrealSerializerFactory objectFactory, int indent, boolean map) {
         Stream.Builder<CharSequence> properties = Stream.builder();
 
         UnrealPackage up = object.entry.getUnrealPackage();
@@ -298,38 +310,20 @@ public class Decompiler {
                 } else if (template instanceof ObjectProperty) {
                     UnrealPackage.Entry entry = up.objectReference((Integer) obj);
                     if (needExport(entry, template)) {
-                        properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent));
+                        properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent, map));
                     }
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
                         sb.append("(").append(i).append(")");
                     }
-                    sb.append("=");
-                    if (entry == null) {
-                        sb.append("None");
-                    } else if (entry instanceof UnrealPackage.ImportEntry) {
-                        sb.append(((UnrealPackage.ImportEntry) entry).getClassName().getName())
-                                .append("'")
-                                .append(entry.getObjectFullName())
-                                .append("'");
-                    } else if (entry instanceof UnrealPackage.ExportEntry) {
-                        String clazz = "Class";
-                        if (((UnrealPackage.ExportEntry) entry).getObjectClass() != null)
-                            clazz = ((UnrealPackage.ExportEntry) entry).getObjectClass().getObjectName().getName();
-                        sb.append(clazz)
-                                .append("'")
-                                .append(entry.getObjectInnerFullName())
-                                .append("'");
-                    } else {
-                        throw new IllegalStateException("wtf");
-                    }
+                    sb.append("=").append(linkTo(entry, map));
                 } else if (template instanceof NameProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
                         sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    sb.append("'").append(up.nameReference((Integer) obj)).append("'");
+                    sb.append("\"").append(up.nameReference((Integer) obj)).append("\"");
                 } else if (template instanceof ArrayProperty) {
                     ArrayProperty arrayProperty = (ArrayProperty) property.getTemplate();
                     Property innerProperty = arrayProperty.inner;
@@ -342,7 +336,7 @@ public class Decompiler {
                         if (innerProperty instanceof ObjectProperty) {
                             UnrealPackage.Entry entry = up.objectReference((Integer) innerObj);
                             if (needExport(entry, innerProperty)) {
-                                properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent));
+                                properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent, map));
                             }
                         }
 
@@ -351,7 +345,7 @@ public class Decompiler {
                             sb.append(newLine(indent));
                         sb.append(property.getName()).append("(").append(j).append(")")
                                 .append("=")
-                                .append(inlineProperty(fakeProperty, up, objectFactory, true));
+                                .append(inlineProperty(fakeProperty, up, objectFactory, true, map));
                     }
                 } else if (template instanceof StructProperty) {
                     sb.append(property.getName());
@@ -359,7 +353,7 @@ public class Decompiler {
                         sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    sb.append(inlineStruct((List<L2Property>) obj, up, objectFactory));
+                    sb.append(inlineStruct((List<L2Property>) obj, up, objectFactory, map));
                 } else if (template instanceof StrProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
@@ -376,110 +370,158 @@ public class Decompiler {
         return properties.build().collect(Collectors.joining(newLine(indent)));
     }
 
-    public static CharSequence inlineProperty(L2Property property, UnrealPackage up, UnrealSerializerFactory objectFactory, boolean valueOnly) {
-        StringBuilder sb = new StringBuilder();
-
+    public static CharSequence inlineProperty(L2Property property, UnrealPackage up, UnrealSerializerFactory objectFactory, boolean valueOnly, boolean map) {
         Property template = property.getTemplate();
+        return IntStream.range(0, template.arrayDimension)
+                .mapToObj(i -> new IndexObject(i, property.getAt(i)))
+                .filter(o -> o.getObject() != null)
+                .map(e -> {
+                    int i = e.getIndex();
+                    java.lang.Object object = e.getObject();
+                    StringBuilder sb = new StringBuilder();
+                    if (!valueOnly) {
+                        sb.append(property.getName());
 
-        for (int i = 0; i < template.arrayDimension; i++) {
-            if (!valueOnly) {
-                sb.append(property.getName());
+                        if (template.arrayDimension > 1) {
+                            sb.append("(").append(i).append(")");
+                        }
 
-                if (template.arrayDimension > 1) {
-                    sb.append("(").append(i).append(")");
-                }
-
-                sb.append("=");
-            }
-
-            java.lang.Object object = property.getAt(i);
-
-            if (template instanceof ByteProperty) {
-                if (((ByteProperty) template).enumType != null) {
-                    Enum en = ((ByteProperty) template).enumType;
-                    sb.append(en.values[(Integer) object]);
-                } else {
-                    sb.append(object);
-                }
-            } else if (template instanceof IntProperty ||
-                    template instanceof BoolProperty) {
-                sb.append(object);
-            } else if (template instanceof FloatProperty) {
-                sb.append(String.format(Locale.US, "%f", (Float) object));
-            } else if (template instanceof ObjectProperty) {
-                UnrealPackage.Entry entry = up.objectReference((Integer) object);
-                if (entry == null) {
-                    sb.append("None");
-                } else if (entry instanceof UnrealPackage.ImportEntry) {
-                    sb.append(((UnrealPackage.ImportEntry) entry).getClassName().getName())
-                            .append("'")
-                            .append(entry.getObjectFullName())
-                            .append("'");
-                } else if (entry instanceof UnrealPackage.ExportEntry) {
-                    if (Property.CPF.getFlags(template.propertyFlags).contains(Property.CPF.ExportObject)) {
-                        sb.append("\"").append(entry.getObjectName().getName()).append("\"");
-                    } else {
-                        String clazz = "Class";
-                        if (((UnrealPackage.ExportEntry) entry).getObjectClass() != null)
-                            clazz = ((UnrealPackage.ExportEntry) entry).getObjectClass().getObjectName().getName();
-                        sb.append(clazz)
-                                .append("'")
-                                .append(entry.getObjectName().getName())
-                                .append("'");
+                        sb.append("=");
                     }
-                } else {
-                    throw new IllegalStateException("wtf");
-                }
-            } else if (template instanceof NameProperty) {
-                sb.append("'").append(Objects.toString(object)).append("'");
-            } else if (template instanceof ArrayProperty) {
-                ArrayProperty arrayProperty = (ArrayProperty) property.getTemplate();
-                Property innerProperty = arrayProperty.inner;
-                L2Property fakeProperty = new L2Property(innerProperty);
-                List<java.lang.Object> list = (List<java.lang.Object>) object;
 
-                sb.append(list.stream()
-                        .map(o -> {
-                            fakeProperty.putAt(0, o);
-                            return inlineProperty(fakeProperty, up, objectFactory, true);
-                        }).collect(Collectors.joining(",", "(", ")")));
-            } else if (template instanceof StructProperty) {
-                if (object == null) {
-                    sb.append("None");
-                } else {
-                    sb.append(inlineStruct((List<L2Property>) object, up, objectFactory));
-                }
-            } else if (template instanceof StrProperty) {
-                sb.append("\"").append(Objects.toString(object)).append("\"");
-            }
+                    if (template instanceof ByteProperty) {
+                        if (((ByteProperty) template).enumType != null) {
+                            Enum en = ((ByteProperty) template).enumType;
+                            sb.append(en.values[(Integer) object]);
+                        } else {
+                            sb.append(object);
+                        }
+                    } else if (template instanceof IntProperty ||
+                            template instanceof BoolProperty) {
+                        sb.append(object);
+                    } else if (template instanceof FloatProperty) {
+                        sb.append(String.format(Locale.US, "%f", (Float) object));
+                    } else if (template instanceof ObjectProperty) {
+                        UnrealPackage.Entry entry = up.objectReference((Integer) object);
+                        sb.append(linkTo(entry, map));
+                    } else if (template instanceof NameProperty) {
+                        sb.append("\"").append(up.nameReference((Integer) object)).append("\"");
+                    } else if (template instanceof ArrayProperty) {
+                        ArrayProperty arrayProperty = (ArrayProperty) property.getTemplate();
+                        Property innerProperty = arrayProperty.inner;
+                        L2Property fakeProperty = new L2Property(innerProperty);
+                        List<java.lang.Object> list = (List<java.lang.Object>) object;
 
-            if (i != template.arrayDimension - 1)
-                sb.append(",");
-        }
-
-        return sb;
+                        sb.append(list.stream()
+                                .map(o -> {
+                                    fakeProperty.putAt(0, o);
+                                    return inlineProperty(fakeProperty, up, objectFactory, true, map);
+                                }).collect(Collectors.joining(",", "(", ")")));
+                    } else if (template instanceof StructProperty) {
+                        if (object == null) {
+                            sb.append("None");
+                        } else {
+                            sb.append(inlineStruct((List<L2Property>) object, up, objectFactory, map));
+                        }
+                    } else if (template instanceof StrProperty) {
+                        sb.append("\"").append(Objects.toString(object)).append("\"");
+                    }
+                    return sb;
+                })
+                .collect(Collectors.joining(","));
     }
 
-    public static CharSequence inlineStruct(List<L2Property> struct, UnrealPackage up, UnrealSerializerFactory objectFactory) {
-        return struct.stream().map(p -> inlineProperty(p, up, objectFactory, false)).collect(Collectors.joining(",", "(", ")"));
+    public static CharSequence linkTo(UnrealPackage.Entry entry, boolean map) {
+        if (entry == null) {
+            return "None";
+        } else if (entry instanceof UnrealPackage.ImportEntry) {
+            return ((UnrealPackage.ImportEntry) entry).getClassName().getName() +
+                    "'" +
+                    entry.getObjectFullName() +
+                    "'";
+        } else if (entry instanceof UnrealPackage.ExportEntry) {
+            String clazz = "Class";
+            if (((UnrealPackage.ExportEntry) entry).getObjectClass() != null)
+                clazz = ((UnrealPackage.ExportEntry) entry).getObjectClass().getObjectName().getName();
+            return clazz + "'" +
+                    (map ? "myLevel." + entry.getObjectInnerFullName() : entry.getObjectFullName()) +
+                    "'";
+        } else {
+            throw new IllegalStateException("Unknown entry class: " + entry.getClass());
+        }
+    }
+
+    public static CharSequence inlineStruct(List<L2Property> struct, UnrealPackage up, UnrealSerializerFactory objectFactory, boolean map) {
+        return struct.stream().map(p -> inlineProperty(p, up, objectFactory, false, map)).collect(Collectors.joining(",", "(", ")"));
     }
 
     public static boolean needExport(UnrealPackage.Entry entry, Property template) {
         return entry != null &&
                 entry instanceof UnrealPackage.ExportEntry &&
-                (Property.CPF.getFlags(template.propertyFlags).contains(Property.CPF.ExportObject) ||
-                        Property.CPF.getFlags(template.propertyFlags).contains(Property.CPF.EditInlineNotify)); //FIXME
+                (getFlags(template.propertyFlags).contains(ExportObject) ||
+                        getFlags(template.propertyFlags).contains(EditInlineNotify)); //FIXME
 
     }
 
-    public static CharSequence toT3d(Object object, UnrealSerializerFactory objectFactory, int indent) {
+    public static CharSequence toT3d(Object object, UnrealSerializerFactory objectFactory, int indent, boolean map) {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("Begin Object");
-        sb.append(" Class=").append(object.entry.getObjectClass().getObjectName().getName());
-        sb.append(" Name=").append(object.entry.getObjectName().getName());
-        sb.append(newLine(indent + 1)).append(decompileProperties(object, objectFactory, indent + 1));
-        sb.append(newLine(indent)).append("End Object");
+        String clazz = object.entry.getObjectClass().getObjectName().getName();
+        String name = object.entry.getObjectName().getName();
+        if ("Model".equalsIgnoreCase(clazz)) {
+            sb.append("Begin Brush Name=").append(name);
+            sb.append(newLine(indent + 1)).append("Begin PolyList");
+
+            //TODO Model support
+            ByteBuffer buffer = ByteBuffer.wrap(object.unreadBytes);
+            Polys polys = null;
+            for (int i = buffer.limit() - 1; i > 0; i--) {
+                try {
+                    buffer.position(i);
+
+                    int ref = getCompactInt(buffer);
+                    UnrealPackage.ExportEntry entry = (UnrealPackage.ExportEntry) object.entry
+                            .getUnrealPackage()
+                            .objectReference(ref);
+                    if (entry.getFullClassName().equalsIgnoreCase("Engine.Polys")) {
+                        polys = (Polys) objectFactory.getOrCreateObject(entry);
+                        break;
+                    }
+                } catch (Throwable ignore) {
+                }
+            }
+            if (polys == null)
+                throw new IllegalStateException("Polys not found in " + object.entry.getObjectFullName());
+
+            for (Polys.Polygon polygon : polys.polygons) {
+                sb.append(newLine(indent + 2)).append("Begin Polygon");
+                if (!"None".equalsIgnoreCase(polygon.itemName)) {
+                    sb.append(" Item=").append(polygon.itemName);
+                }
+                if (polygon.texture != null) {
+                    sb.append(" Texture=").append(polygon.texture.entry.getObjectFullName());
+                }
+                if (polygon.flags != 0) {
+                    sb.append(" Flags=").append(polygon.flags);
+                }
+                sb.append(" Link=").append(polygon.iLink);
+                sb.append(newLine(indent + 3)).append("Origin   ").append(formatVector(polygon.origin));
+                sb.append(newLine(indent + 3)).append("Normal   ").append(formatVector(polygon.normal));
+                sb.append(newLine(indent + 3)).append("TextureU ").append(formatVector(polygon.textureU));
+                sb.append(newLine(indent + 3)).append("TextureV ").append(formatVector(polygon.textureV));
+                for (Object.Vector vertex : polygon.vertexes)
+                    sb.append(newLine(indent + 3)).append("Vertex   ").append(formatVector(vertex));
+                sb.append(newLine(indent + 2)).append("End Polygon");
+            }
+
+            sb.append(newLine(indent + 1)).append("End PolyList");
+            sb.append(newLine(indent)).append("End Brush");
+        } else {
+            String type = objectFactory.isSubclass("Engine.Actor", object.entry.getFullClassName()) ? "Actor" : "Object";
+            sb.append("Begin ").append(type).append(" Class=").append(clazz).append(" Name=").append(name);
+            sb.append(newLine(indent + 1)).append(decompileProperties(object, objectFactory, indent + 1, map));
+            sb.append(newLine(indent)).append("End ").append(type);
+        }
 
         return sb;
     }

@@ -21,36 +21,20 @@
  */
 package acmi.l2.clientmod.decompiler;
 
-import acmi.l2.clientmod.unreal.core.Object;
+class IndexObject {
+    private final int index;
+    private final Object object;
 
-import java.text.DecimalFormat;
-
-public class Util {
-    private static DecimalFormat FORMAT_POLYGON_VECTOR = new DecimalFormat("00000.000000");
-    static {
-        Util.FORMAT_POLYGON_VECTOR.setPositivePrefix("+");
+    IndexObject(int index, Object object) {
+        this.index = index;
+        this.object = object;
     }
 
-    public static String formatVector(Object.Vector vector) {
-        return Util.FORMAT_POLYGON_VECTOR.format(vector.x) + "," +
-                Util.FORMAT_POLYGON_VECTOR.format(vector.y) + "," +
-                Util.FORMAT_POLYGON_VECTOR.format(vector.z);
+    int getIndex() {
+        return index;
     }
 
-    public static CharSequence tab(int indent) {
-        StringBuilder sb = new StringBuilder(indent);
-        for (int i = 0; i < indent; i++)
-            sb.append('\t');
-        return sb;
-    }
-
-    public static CharSequence newLine() {
-        return newLine(0);
-    }
-
-    public static CharSequence newLine(int indent) {
-        StringBuilder sb = new StringBuilder("\r\n");
-        sb.append(tab(indent));
-        return sb;
+    Object getObject() {
+        return object;
     }
 }
