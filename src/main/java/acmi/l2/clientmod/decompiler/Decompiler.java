@@ -265,13 +265,6 @@ public class Decompiler {
             for (int i = 0; i < template.arrayDimension; i++) {
                 java.lang.Object obj = property.getAt(i);
 
-                if (template instanceof ByteProperty ||
-                        template instanceof ObjectProperty ||
-                        template instanceof NameProperty ||
-                        template instanceof ArrayProperty) {
-                    assert obj != null; //TODO replace assertion
-                }
-
                 if (obj == null) {
                     if (template instanceof StructProperty)
                         continue;
@@ -290,25 +283,31 @@ public class Decompiler {
                         Enum en = ((ByteProperty) template).enumType;
                         sb.append(en.values[(Integer) obj]);
                     } else {
-                        sb.append(obj);
+                        sb.append(Optional.ofNullable(obj).orElse(0));
                     }
-                } else if (template instanceof IntProperty ||
-                        template instanceof BoolProperty) {
+                } else if (template instanceof IntProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
                         sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    sb.append(obj);
+                    sb.append(Optional.ofNullable(obj).orElse(0));
+                } else if (template instanceof BoolProperty) {
+                    sb.append(property.getName());
+                    if (template.arrayDimension > 1) {
+                        sb.append("(").append(i).append(")");
+                    }
+                    sb.append("=");
+                    sb.append(Optional.ofNullable(obj).orElse(false));
                 } else if (template instanceof FloatProperty) {
                     sb.append(property.getName());
                     if (template.arrayDimension > 1) {
                         sb.append("(").append(i).append(")");
                     }
                     sb.append("=");
-                    sb.append(String.format(Locale.US, "%f", (Float) obj));
+                    sb.append(String.format(Locale.US, "%f", (Float) Optional.ofNullable(obj).orElse(0f)));
                 } else if (template instanceof ObjectProperty) {
-                    UnrealPackage.Entry entry = up.objectReference((Integer) obj);
+                    UnrealPackage.Entry entry = up.objectReference((Integer) Optional.ofNullable(obj).orElse(0));
                     if (needExport(entry, template)) {
                         properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent, map));
                     }
@@ -329,23 +328,24 @@ public class Decompiler {
                     Property innerProperty = arrayProperty.inner;
                     L2Property fakeProperty = new L2Property(innerProperty);
                     List<java.lang.Object> list = (List<java.lang.Object>) obj;
+                    if (list != null) {
+                        for (int j = 0; j < list.size(); j++) {
+                            java.lang.Object innerObj = list.get(j);
 
-                    for (int j = 0; j < list.size(); j++) {
-                        java.lang.Object innerObj = list.get(j);
-
-                        if (innerProperty instanceof ObjectProperty) {
-                            UnrealPackage.Entry entry = up.objectReference((Integer) innerObj);
-                            if (needExport(entry, innerProperty)) {
-                                properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent, map));
+                            if (innerProperty instanceof ObjectProperty) {
+                                UnrealPackage.Entry entry = up.objectReference((Integer) innerObj);
+                                if (needExport(entry, innerProperty)) {
+                                    properties.add(toT3d(instantiate((UnrealPackage.ExportEntry) entry, objectFactory), objectFactory, indent, map));
+                                }
                             }
-                        }
 
-                        fakeProperty.putAt(0, innerObj);
-                        if (j > 0)
-                            sb.append(newLine(indent));
-                        sb.append(property.getName()).append("(").append(j).append(")")
-                                .append("=")
-                                .append(inlineProperty(fakeProperty, up, objectFactory, true, map));
+                            fakeProperty.putAt(0, innerObj);
+                            if (j > 0)
+                                sb.append(newLine(indent));
+                            sb.append(property.getName()).append("(").append(j).append(")")
+                                    .append("=")
+                                    .append(inlineProperty(fakeProperty, up, objectFactory, true, map));
+                        }
                     }
                 } else if (template instanceof StructProperty) {
                     sb.append(property.getName());
