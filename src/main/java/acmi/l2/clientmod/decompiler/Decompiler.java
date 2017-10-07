@@ -26,6 +26,7 @@ import acmi.l2.clientmod.unreal.UnrealRuntimeContext;
 import acmi.l2.clientmod.unreal.UnrealSerializerFactory;
 import acmi.l2.clientmod.unreal.core.*;
 import acmi.l2.clientmod.unreal.core.Class;
+import acmi.l2.clientmod.unreal.core.Const;
 import acmi.l2.clientmod.unreal.core.Enum;
 import acmi.l2.clientmod.unreal.core.Object;
 import acmi.l2.clientmod.unreal.engine.Polys;
@@ -33,18 +34,17 @@ import acmi.l2.clientmod.unreal.properties.L2Property;
 import javafx.util.Pair;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static acmi.l2.clientmod.decompiler.Util.*;
+import static acmi.l2.clientmod.decompiler.Util.formatVector;
+import static acmi.l2.clientmod.decompiler.Util.newLine;
 import static acmi.l2.clientmod.io.BufferUtil.getCompactInt;
 import static acmi.l2.clientmod.unreal.core.Property.CPF.*;
+import static acmi.l2.clientmod.unreal.core.Property.CPF.Deprecated;
 
 @SuppressWarnings({"WeakerAccess", "unchecked", "UnusedParameters", "unused"})
 public class Decompiler {
@@ -480,11 +480,12 @@ public class Decompiler {
                     buffer.position(i);
 
                     int ref = getCompactInt(buffer);
-                    UnrealPackage.ExportEntry entry = (UnrealPackage.ExportEntry) object.entry
-                            .getUnrealPackage()
-                            .objectReference(ref);
-                    if (entry.getFullClassName().equalsIgnoreCase("Engine.Polys")) {
-                        polys = (Polys) objectFactory.getOrCreateObject(entry);
+                    polys = (Polys) Optional.of(ref)
+                            .map(object.entry.getUnrealPackage()::objectReference)
+                            .filter(it -> "Engine.Polys".equalsIgnoreCase(it.getFullClassName()))
+                            .map(objectFactory::getOrCreateObject)
+                            .orElse(null);
+                    if (polys != null) {
                         break;
                     }
                 } catch (Throwable ignore) {
