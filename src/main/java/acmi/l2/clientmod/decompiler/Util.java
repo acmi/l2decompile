@@ -21,9 +21,16 @@
  */
 package acmi.l2.clientmod.decompiler;
 
+import acmi.l2.clientmod.unreal.core.Field;
 import acmi.l2.clientmod.unreal.core.Object;
+import acmi.l2.clientmod.unreal.core.Struct;
 
 import java.text.DecimalFormat;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import static java.util.Spliterator.*;
 
 public class Util {
     private static DecimalFormat FORMAT_POLYGON_VECTOR = new DecimalFormat("00000.000000");
@@ -52,5 +59,9 @@ public class Util {
         StringBuilder sb = new StringBuilder("\r\n");
         sb.append(tab(indent));
         return sb;
+    }
+
+    public static Stream<Field> children(Struct struct) {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(struct.iterator(), DISTINCT | ORDERED | NONNULL), false);
     }
 }

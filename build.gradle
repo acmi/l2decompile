@@ -9,5 +9,7 @@ repositories{
 }
 
 dependencies{
-    compile group:'acmi.l2.clientmod', name:'l2unreal', version: '1.4.+'
+    compile group:'acmi.l2.clientmod', name:'l2unreal', version: '1.5.+'
+    compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.1'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.0'
 }
